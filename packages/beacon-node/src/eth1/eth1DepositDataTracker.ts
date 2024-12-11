@@ -200,6 +200,7 @@ export class Eth1DepositDataTracker {
         }
       } catch (e) {
         this.metrics?.eth1.depositTrackerUpdateErrors.inc(1);
+        this.logger?.error("Deposit request error, retrying", {}, e as Error);
 
         // From Infura: 429 Too Many Requests
         if (e instanceof HttpRpcError && e.status === 429) {
