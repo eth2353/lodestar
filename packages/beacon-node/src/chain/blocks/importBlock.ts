@@ -213,9 +213,6 @@ export async function importBlock(
   const currFinalizedEpoch = this.forkChoice.getFinalizedCheckpoint().epoch;
 
   if (newHead.blockRoot !== oldHead.blockRoot) {
-    // Set head state as strong reference
-    this.regen.updateHeadState(newHead, postState);
-
     try {
       this.emitter.emit(routes.events.EventType.head, {
         block: newHead.blockRoot,
@@ -249,6 +246,9 @@ export async function importBlock(
         }
       }
     }
+
+    // Set head state as strong reference
+    this.regen.updateHeadState(newHead, postState);
 
     this.onNewHead(newHead);
 
