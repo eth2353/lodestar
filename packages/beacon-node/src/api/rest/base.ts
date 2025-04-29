@@ -157,6 +157,61 @@ export class RestApiServer {
       this.logger.debug(`Exec ${req.id} ${req.ip} ${operationId}`);
     });
 
+    server.addHook('onRequest', async (req, reply) => {
+      // (req as any).startTime = process.hrtime.bigint();
+      const operationId = getOperationId(req);
+      if (operationId === "getAggregatedAttestationV2") {
+        this.logger.info(`onRequest ${req.id} ${req.url} ${req.query} ${operationId}`);
+      }
+    });
+
+    /*
+    server.addHook('preValidation', async (req, reply) => {
+      (req as any).preValidationTime = process.hrtime.bigint();
+    });
+
+    server.addHook('preHandler', async (req, reply) => {
+      (req as any).preHandlerTime = process.hrtime.bigint();
+    });
+
+    server.addHook('onSend', async (req, reply, payload) => {
+      (req as any).sendStartTime = process.hrtime.bigint();
+
+      const operationId = getOperationId(req);
+      if (operationId === "getAggregatedAttestationV2") {
+        reply.raw.once('finish', () => {
+          const finishTime = process.hrtime.bigint();
+
+          const timings = {
+            parsingMs: Number((req as any).preValidationTime - (req as any).startTime) / 1_000_000,
+            validationMs: Number((req as any).preHandlerTime - (req as any).preValidationTime) / 1_000_000,
+            handlerMs: Number((req as any).sendStartTime - (req as any).preHandlerTime) / 1_000_000,
+            sendFlushMs: Number(finishTime - (req as any).sendStartTime) / 1_000_000,
+            totalMs: Number(finishTime - (req as any).startTime) / 1_000_000,
+          };
+          console.warn(`[Request Timing] ${req.raw.method} ${req.raw.url}`, timings);
+        });
+      }
+
+      return payload;
+    });
+
+    server.addHook("onSend", async (req, _res, payload) => {
+        const sendStart = process.hrtime.bigint();
+
+        _res.raw.once('finish', () => {
+          const sendEnd = process.hrtime.bigint();
+          const durationMs = Number(sendEnd - sendStart) / 1_000_000;
+
+          if (durationMs > 200) {
+            console.warn(`[Slow Send] ${req.raw.url} took ${durationMs.toFixed(2)}ms to flush!`);
+          }
+        });
+
+        return payload;
+    });
+     */
+
     // Log after response
     server.addHook("onResponse", async (req, res) => {
       const operationId = getOperationId(req);
