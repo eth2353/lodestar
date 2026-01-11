@@ -144,6 +144,8 @@ function computeSubnetForDataColumn(config: ChainForkConfig, columnIndex: Column
  * https://github.com/ethereum/consensus-specs/blob/v1.6.0-alpha.3/specs/fulu/validator.md#validator-custody
  */
 export function getValidatorsCustodyRequirement(config: ChainForkConfig, effectiveBalances: number[]): number {
+  return config.CUSTODY_REQUIREMENT;
+
   if (effectiveBalances.length === 0) {
     return config.CUSTODY_REQUIREMENT;
   }
