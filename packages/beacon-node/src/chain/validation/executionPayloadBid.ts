@@ -19,19 +19,27 @@ export async function validateApiExecutionPayloadBid(
   chain: IBeaconChain,
   signedExecutionPayloadBid: gloas.SignedExecutionPayloadBid
 ): Promise<{proposerIndex: ValidatorIndex}> {
-  return validateExecutionPayloadBid(chain, signedExecutionPayloadBid);
+  return validateExecutionPayloadBid(chain, signedExecutionPayloadBid, true);
+}
+
+export async function validateExecutionPayloadBidForBlockProduction(
+  chain: IBeaconChain,
+  signedExecutionPayloadBid: gloas.SignedExecutionPayloadBid
+): Promise<{proposerIndex: ValidatorIndex}> {
+  return validateExecutionPayloadBid(chain, signedExecutionPayloadBid, false);
 }
 
 export async function validateGossipExecutionPayloadBid(
   chain: IBeaconChain,
   signedExecutionPayloadBid: gloas.SignedExecutionPayloadBid
 ): Promise<{proposerIndex: ValidatorIndex}> {
-  return validateExecutionPayloadBid(chain, signedExecutionPayloadBid);
+  return validateExecutionPayloadBid(chain, signedExecutionPayloadBid, true);
 }
 
 async function validateExecutionPayloadBid(
   chain: IBeaconChain,
-  signedExecutionPayloadBid: gloas.SignedExecutionPayloadBid
+  signedExecutionPayloadBid: gloas.SignedExecutionPayloadBid,
+  validateForGossip: boolean
 ): Promise<{proposerIndex: ValidatorIndex}> {
   const bid = signedExecutionPayloadBid.message;
   const parentBlockRootHex = toRootHex(bid.parentBlockRoot);
@@ -219,7 +227,7 @@ async function validateExecutionPayloadBid(
   }
 
   // [IGNORE] this is the first signed bid seen with a valid signature from the given builder for this slot.
-  if (chain.seenExecutionPayloadBids.isKnown(bid.slot, bid.builderIndex)) {
+  if (validateForGossip && chain.seenExecutionPayloadBids.isKnown(bid.slot, bid.builderIndex)) {
     throw new ExecutionPayloadBidError(GossipAction.IGNORE, {
       code: ExecutionPayloadBidErrorCode.BID_ALREADY_KNOWN,
       builderIndex: bid.builderIndex,
@@ -231,13 +239,15 @@ async function validateExecutionPayloadBid(
 
   // [IGNORE] this bid is the highest value bid seen for the tuple
   // `(bid.slot, bid.parent_block_hash, bid.parent_block_root)`.
-  const bestBid = chain.executionPayloadBidPool.getBestBid(bid.slot, parentBlockHashHex, parentBlockRootHex);
-  if (bestBid !== null && bestBid.message.value >= bid.value) {
-    throw new ExecutionPayloadBidError(GossipAction.IGNORE, {
-      code: ExecutionPayloadBidErrorCode.BID_TOO_LOW,
-      bidValue: bid.value,
-      currentHighestBid: bestBid.message.value,
-    });
+  if (validateForGossip) {
+    const bestBid = chain.executionPayloadBidPool.getBestBid(bid.slot, parentBlockHashHex, parentBlockRootHex);
+    if (bestBid !== null && bestBid.message.value >= bid.value) {
+      throw new ExecutionPayloadBidError(GossipAction.IGNORE, {
+        code: ExecutionPayloadBidErrorCode.BID_TOO_LOW,
+        bidValue: bid.value,
+        currentHighestBid: bestBid.message.value,
+      });
+    }
   }
   // [IGNORE] `bid.value` is less or equal than the builder's excess balance --
   // i.e. `can_builder_cover_bid(state, builder_index, amount)` returns `True`.
@@ -277,7 +287,9 @@ async function validateExecutionPayloadBid(
   }
 
   // Valid
-  chain.seenExecutionPayloadBids.add(bid.slot, bid.builderIndex);
+  if (validateForGossip) {
+    chain.seenExecutionPayloadBids.add(bid.slot, bid.builderIndex);
+  }
 
   return {proposerIndex: proposerPreferences.message.validatorIndex};
 }

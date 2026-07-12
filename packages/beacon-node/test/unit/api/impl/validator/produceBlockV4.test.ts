@@ -5,9 +5,14 @@ import {ForkName} from "@lodestar/params";
 import {ssz} from "@lodestar/types";
 import {getValidatorApi} from "../../../../../src/api/impl/validator/index.js";
 import {defaultApiOptions} from "../../../../../src/api/options.js";
+import {validateExecutionPayloadBidForBlockProduction} from "../../../../../src/chain/validation/executionPayloadBid.js";
 import {SyncState} from "../../../../../src/sync/interface.js";
 import {ApiTestModules, getApiTestModules} from "../../../../utils/api.js";
 import {zeroProtoBlock} from "../../../../utils/state.js";
+
+vi.mock("../../../../../src/chain/validation/executionPayloadBid.js", () => ({
+  validateExecutionPayloadBidForBlockProduction: vi.fn(),
+}));
 
 describe("api/validator - produceBlockV4", () => {
   let modules: ApiTestModules;
@@ -49,6 +54,11 @@ describe("api/validator - produceBlockV4", () => {
   } as ProtoBlock;
 
   const randaoReveal = engineBlock.body.randaoReveal;
+  const validatorBid = ssz.gloas.SignedExecutionPayloadBid.defaultValue();
+  validatorBid.message.slot = slot;
+  validatorBid.message.parentBlockRoot = Buffer.from(parentBlock.blockRoot.slice(2), "hex");
+  validatorBid.message.parentBlockHash = Buffer.from(parentBlock.executionPayloadBlockHash.slice(2), "hex");
+  validatorBid.message.value = 2;
 
   beforeEach(() => {
     modules = getApiTestModules({config});
@@ -106,5 +116,44 @@ describe("api/validator - produceBlockV4", () => {
     expect(modules.chain.executionPayloadBidPool.getBestBid).not.toHaveBeenCalled();
     expect(modules.chain.produceBlock).toHaveBeenCalledTimes(1);
     expect(block).toEqual(engineBlock);
+  });
+
+  it("uses a valid validator client-supplied execution payload bid", async () => {
+    modules.chain.builderCircuitBreaker.isActive.mockReturnValue(false);
+
+    const {data: block} = await api.produceBlockV4({
+      slot,
+      randaoReveal,
+      graffiti,
+      feeRecipient,
+      signedExecutionPayloadBid: {version: ForkName.gloas, data: validatorBid},
+    });
+
+    expect(validateExecutionPayloadBidForBlockProduction).toHaveBeenCalledWith(modules.chain, validatorBid);
+    expect(modules.chain.executionPayloadBidPool.getBestBid).not.toHaveBeenCalled();
+    expect(modules.chain.produceBlock).toHaveBeenCalledWith(expect.objectContaining({builderBid: validatorBid}));
+    expect(block).toEqual(bidBlock);
+  });
+
+  it("falls back to beacon node bid selection when the validator client-supplied bid is invalid", async () => {
+    modules.chain.builderCircuitBreaker.isActive.mockReturnValue(false);
+    vi.mocked(validateExecutionPayloadBidForBlockProduction).mockRejectedValueOnce(new Error("invalid bid"));
+    modules.chain.executionPayloadBidPool.getBestBid.mockReturnValue(builderBid);
+
+    const {data: block} = await api.produceBlockV4({
+      slot,
+      randaoReveal,
+      graffiti,
+      feeRecipient,
+      signedExecutionPayloadBid: {version: ForkName.gloas, data: validatorBid},
+    });
+
+    expect(modules.chain.executionPayloadBidPool.getBestBid).toHaveBeenCalledWith(
+      slot,
+      parentBlock.executionPayloadBlockHash,
+      parentBlock.blockRoot
+    );
+    expect(modules.chain.produceBlock).toHaveBeenCalledWith(expect.objectContaining({builderBid}));
+    expect(block).toEqual(bidBlock);
   });
 });

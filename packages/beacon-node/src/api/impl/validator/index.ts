@@ -75,6 +75,7 @@ import {PREPARE_NEXT_SLOT_BPS} from "../../../chain/prepareNextSlot.js";
 import {BlockType, ProduceFullDeneb, ProduceFullGloas} from "../../../chain/produceBlock/index.js";
 import {RegenCaller} from "../../../chain/regen/index.js";
 import {CheckpointHex} from "../../../chain/stateCache/types.js";
+import {validateExecutionPayloadBidForBlockProduction} from "../../../chain/validation/executionPayloadBid.js";
 import {validateApiAggregateAndProof} from "../../../chain/validation/index.js";
 import {validateGossipProposerPreferences} from "../../../chain/validation/proposerPreferences.js";
 import {validateSyncCommitteeGossipContributionAndProof} from "../../../chain/validation/syncCommitteeContributionAndProof.js";
@@ -910,7 +911,7 @@ export function getValidatorApi(
       return {data, meta};
     },
 
-    async produceBlockV4({slot, randaoReveal, graffiti, feeRecipient}) {
+    async produceBlockV4({slot, randaoReveal, graffiti, feeRecipient, signedExecutionPayloadBid}) {
       const fork = config.getForkName(slot);
 
       if (!isForkPostGloas(fork)) {
@@ -939,9 +940,45 @@ export function getValidatorApi(
       const isBuildingOnFull = chain.forkChoice.shouldBuildOnFull(parentBlock, slot);
       const bidParentBlockHash = isBuildingOnFull ? parentBlock.executionPayloadBlockHash : parentBlock.parentBlockHash;
       const builderCircuitBreakerActive = chain.builderCircuitBreaker.isActive(slot);
+      let validatorClientBid: gloas.SignedExecutionPayloadBid | null = null;
+      if (signedExecutionPayloadBid !== undefined && !builderCircuitBreakerActive) {
+        const bid = signedExecutionPayloadBid.data.message;
+        try {
+          await validateExecutionPayloadBidForBlockProduction(chain, signedExecutionPayloadBid.data);
+
+          const bidParentBlockRootHex = toRootHex(bid.parentBlockRoot);
+          const bidParentBlockHashHex = toRootHex(bid.parentBlockHash);
+          if (
+            signedExecutionPayloadBid.version !== fork ||
+            bid.slot !== slot ||
+            bidParentBlockRootHex !== parentBlockRootHex ||
+            bidParentBlockHashHex !== bidParentBlockHash
+          ) {
+            logger.warn("Validator client-supplied execution payload bid does not match block production request", {
+              slot,
+              bidSlot: bid.slot,
+              fork,
+              bidVersion: signedExecutionPayloadBid.version,
+              parentBlockRoot: parentBlockRootHex,
+              bidParentBlockRoot: bidParentBlockRootHex,
+              parentBlockHash: bidParentBlockHash,
+              bidParentBlockHash: bidParentBlockHashHex,
+            });
+          } else {
+            validatorClientBid = signedExecutionPayloadBid.data;
+          }
+        } catch (e) {
+          logger.warn(
+            "Invalid validator client-supplied execution payload bid, falling back to beacon node bid selection",
+            {slot, builderIndex: bid.builderIndex},
+            e as Error
+          );
+        }
+      }
+
       const builderBid = builderCircuitBreakerActive
         ? null
-        : chain.executionPayloadBidPool.getBestBid(slot, bidParentBlockHash, parentBlockRootHex);
+        : (validatorClientBid ?? chain.executionPayloadBidPool.getBestBid(slot, bidParentBlockHash, parentBlockRootHex));
 
       const logCtx = {
         slot,

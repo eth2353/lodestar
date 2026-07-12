@@ -1,6 +1,7 @@
 import {ContainerType, Type, ValueOf} from "@chainsafe/ssz";
 import {ChainForkConfig} from "@lodestar/config";
 import {
+  ForkName,
   ForkPostDeneb,
   ForkPostGloas,
   ForkPreDeneb,
@@ -9,6 +10,7 @@ import {
   VALIDATOR_REGISTRY_LIMIT,
   isForkPostDeneb,
   isForkPostElectra,
+  isForkPostGloas,
 } from "@lodestar/params";
 import {
   ArrayOf,
@@ -423,7 +425,7 @@ export type Endpoints = {
    * This endpoint is specific to the post-Gloas forks and is not backwards compatible with previous forks.
    */
   produceBlockV4: Endpoint<
-    "GET",
+    "POST",
     {
       /** The slot for which the block should be proposed */
       slot: Slot;
@@ -433,9 +435,13 @@ export type Endpoints = {
       graffiti?: string;
       skipRandaoVerification?: boolean;
       builderBoostFactor?: UintBn64;
+      /** Validator client-selected execution payload bid to include, if valid */
+      signedExecutionPayloadBid?: {version: ForkName; data: gloas.SignedExecutionPayloadBid};
     } & Omit<ExtraProduceBlockOpts, "blindedLocal">,
     {
       params: {slot: number};
+      body: unknown;
+      headers: {[MetaHeader.Version]?: string};
       query: {
         randao_reveal: string;
         graffiti?: string;
@@ -895,9 +901,9 @@ export function getDefinitions(config: ChainForkConfig): RouteDefinitions<Endpoi
     },
     produceBlockV4: {
       url: "/eth/v4/validator/blocks/{slot}",
-      method: "GET",
-      req: {
-        writeReq: ({
+      method: "POST",
+      req: JsonOnlyReq({
+        writeReqJson: ({
           slot,
           randaoReveal,
           graffiti,
@@ -906,8 +912,20 @@ export function getDefinitions(config: ChainForkConfig): RouteDefinitions<Endpoi
           builderSelection,
           builderBoostFactor,
           strictFeeRecipientCheck,
+          signedExecutionPayloadBid,
         }) => ({
           params: {slot},
+          body: {
+            signed_execution_payload_bid:
+              signedExecutionPayloadBid === undefined
+                ? undefined
+                : getPostGloasForkTypes(signedExecutionPayloadBid.version).SignedExecutionPayloadBid.toJson(
+                    signedExecutionPayloadBid.data
+                  ),
+          },
+          headers: {
+            [MetaHeader.Version]: signedExecutionPayloadBid?.version,
+          },
           query: {
             randao_reveal: toHex(randaoReveal),
             graffiti: toGraffitiHex(graffiti),
@@ -918,16 +936,34 @@ export function getDefinitions(config: ChainForkConfig): RouteDefinitions<Endpoi
             strict_fee_recipient_check: strictFeeRecipientCheck,
           },
         }),
-        parseReq: ({params, query}) => ({
-          slot: params.slot,
-          randaoReveal: fromHex(query.randao_reveal),
-          graffiti: fromGraffitiHex(query.graffiti),
-          skipRandaoVerification: parseSkipRandaoVerification(query.skip_randao_verification),
-          feeRecipient: query.fee_recipient,
-          builderSelection: query.builder_selection as BuilderSelection,
-          builderBoostFactor: parseBuilderBoostFactor(query.builder_boost_factor),
-          strictFeeRecipientCheck: query.strict_fee_recipient_check,
-        }),
+        parseReqJson: ({params, query, body, headers}) => {
+          const {signed_execution_payload_bid: signedExecutionPayloadBidJson} = body as {
+            signed_execution_payload_bid?: unknown;
+          };
+          const signedExecutionPayloadBid = (() => {
+            if (signedExecutionPayloadBidJson === undefined) return undefined;
+
+            const version = toForkName(fromHeaders(headers, MetaHeader.Version));
+            if (!isForkPostGloas(version)) throw Error(`Invalid execution payload bid version=${version}`);
+
+            return {
+              version,
+              data: getPostGloasForkTypes(version).SignedExecutionPayloadBid.fromJson(signedExecutionPayloadBidJson),
+            };
+          })();
+
+          return {
+            slot: params.slot,
+            randaoReveal: fromHex(query.randao_reveal),
+            graffiti: fromGraffitiHex(query.graffiti),
+            skipRandaoVerification: parseSkipRandaoVerification(query.skip_randao_verification),
+            feeRecipient: query.fee_recipient,
+            builderSelection: query.builder_selection as BuilderSelection,
+            builderBoostFactor: parseBuilderBoostFactor(query.builder_boost_factor),
+            strictFeeRecipientCheck: query.strict_fee_recipient_check,
+            signedExecutionPayloadBid,
+          };
+        },
         schema: {
           params: {slot: Schema.UintRequired},
           query: {
@@ -939,8 +975,10 @@ export function getDefinitions(config: ChainForkConfig): RouteDefinitions<Endpoi
             builder_boost_factor: Schema.String,
             strict_fee_recipient_check: Schema.Boolean,
           },
+          body: Schema.Object,
+          headers: {[MetaHeader.Version]: Schema.String},
         },
-      },
+      }),
       resp: {
         data: WithVersion((fork) => getPostGloasForkTypes(fork).BeaconBlock),
         meta: {
