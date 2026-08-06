@@ -7,7 +7,7 @@ import {
   createBeaconConfig,
 } from "@lodestar/config";
 import {Clock, ClockOptions, IClock, computeEpochAtSlot, getCurrentSlot} from "@lodestar/state-transition";
-import {BLSPubkey, phase0, ssz} from "@lodestar/types";
+import {BLSPubkey, Bytes32, phase0, ssz} from "@lodestar/types";
 import {Genesis} from "@lodestar/types/phase0";
 import {Logger, toPrintableUrl, toRootHex} from "@lodestar/utils";
 import {waitForGenesis} from "./genesis.js";
@@ -17,6 +17,7 @@ import {AttestationService} from "./services/attestation.js";
 import {BlockProposingService} from "./services/block.js";
 import {BlockDutiesService} from "./services/blockDuties.js";
 import {ChainHeaderTracker} from "./services/chainHeaderTracker.js";
+import {ClientDataService} from "./services/clientData.js";
 import {DoppelgangerService} from "./services/doppelgangerService.js";
 import {ValidatorEventEmitter} from "./services/emitter.js";
 import {ExternalSignerOptions, pollExternalSignerPubkeys} from "./services/externalSignerSync.js";
@@ -29,6 +30,7 @@ import {SyncingStatusTracker} from "./services/syncingStatusTracker.js";
 import {Signer, ValidatorProposerConfig, ValidatorStore, defaultOptions} from "./services/validatorStore.js";
 import {ISlashingProtection, Interchange, InterchangeFormatVersion} from "./slashingProtection/index.js";
 import {LodestarValidatorDatabaseController, ProcessShutdownCallback, PubkeyHex} from "./types.js";
+import {ClientDataSetup} from "./util/clientData.js";
 import {getLoggerVc} from "./util/index.js";
 
 export type ValidatorModules = {
@@ -72,6 +74,7 @@ export type ValidatorOptions = {
   broadcastValidation?: routes.beacon.BroadcastValidation;
   blindedLocal?: boolean;
   payloadLocal?: boolean;
+  clientData?: Bytes32;
   externalSigner?: ExternalSignerOptions;
   clock?: ClockOptions;
 };
@@ -251,6 +254,24 @@ export class Validator {
       metrics
     );
 
+    let getClientData: () => Bytes32;
+    if (opts.clientData !== undefined) {
+      const clientData = opts.clientData;
+      getClientData = () => clientData;
+    } else {
+      const clientDataService = await ClientDataService.init(
+        loggerVc,
+        clock,
+        api.httpClient.urlsInits.length === 0
+          ? [api]
+          : api.httpClient.urlsInits.map((urlInit) =>
+              getClient({urls: [urlInit], globalInit: {signal: controller.signal}}, {config, logger})
+            ),
+        opts.distributed ? ClientDataSetup.Unknown : ClientDataSetup.Simple
+      );
+      getClientData = () => clientDataService.getClientData();
+    }
+
     const blockProposingService = new BlockProposingService(
       config,
       loggerVc,
@@ -265,6 +286,7 @@ export class Validator {
         // Default to keeping the payload local to the beacon node if only a single node is
         // configured, with multiple nodes the stateless flow allows publishing via any of them
         payloadLocal: opts.payloadLocal ?? api.httpClient.urlsInits.length <= 1,
+        getClientData,
       }
     );
 

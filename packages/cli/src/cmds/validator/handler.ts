@@ -9,6 +9,7 @@ import {
 } from "@lodestar/beacon-node";
 import {LevelDbController} from "@lodestar/db/controller/level";
 import {getNodeLogger} from "@lodestar/logger/node";
+import {Bytes32, ssz} from "@lodestar/types";
 import {
   ProcessShutdownCallback,
   SlashingProtection,
@@ -180,6 +181,7 @@ export async function validatorHandler(args: IValidatorCliArgs & GlobalArgs): Pr
       broadcastValidation: parseBroadcastValidation(args.broadcastValidation),
       blindedLocal: args.blindedLocal,
       payloadLocal: args.payloadLocal,
+      clientData: parseClientData(args),
       externalSigner: {
         urls: args["externalSigner.urls"],
         fetch: args["externalSigner.fetch"],
@@ -231,6 +233,18 @@ export async function validatorHandler(args: IValidatorCliArgs & GlobalArgs): Pr
     onGracefulShutdownCbs.push(() => keymanagerServer.close());
     await keymanagerServer.listen();
   }
+}
+
+function parseClientData(args: Pick<IValidatorCliArgs, "clientData">): Bytes32 | undefined {
+  if (args.clientData !== undefined) {
+    try {
+      return ssz.Bytes32.fromJson(args.clientData);
+    } catch {
+      throw new YargsError("--clientData must be a 32-byte hex string");
+    }
+  }
+
+  return undefined;
 }
 
 function getProposerConfigFromArgs(

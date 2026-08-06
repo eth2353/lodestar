@@ -137,6 +137,7 @@ export class ExecutionEngineHttp implements IExecutionEngine {
 
   /** Cached EL client version from the latest getClientVersion call */
   clientVersion?: ClientVersion | null;
+  private clientVersionRequest: Promise<ClientVersion[]> | null = null;
 
   readonly payloadIdCache = new PayloadIdCache();
   /**
@@ -178,7 +179,7 @@ export class ExecutionEngineHttp implements IExecutionEngine {
       if (this.clientVersion === undefined) {
         this.clientVersion = null;
         // This statement should only be called first time receiving response after startup
-        this.getClientVersion(getLodestarClientVersion(this.opts)).catch((e) => {
+        this.getClientVersion().catch((e) => {
           this.logger.debug("Unable to get execution client version", {}, e);
         });
       }
@@ -582,7 +583,22 @@ export class ExecutionEngineHttp implements IExecutionEngine {
     return response.map(deserializeBlobAndProofsV2);
   }
 
-  private async getClientVersion(clientVersion: ClientVersion): Promise<ClientVersion[]> {
+  async getClientVersion(): Promise<ClientVersion | null> {
+    if (this.clientVersion != null) return this.clientVersion;
+
+    const request = this.clientVersionRequest ?? this.fetchClientVersions(getLodestarClientVersion(this.opts));
+    this.clientVersionRequest = request;
+
+    try {
+      return (await request)[0] ?? null;
+    } finally {
+      if (this.clientVersionRequest === request) {
+        this.clientVersionRequest = null;
+      }
+    }
+  }
+
+  private async fetchClientVersions(clientVersion: ClientVersion): Promise<ClientVersion[]> {
     const method = "engine_getClientVersionV1";
 
     const response = await this.rpc.fetchWithRetries<
@@ -613,7 +629,8 @@ export class ExecutionEngineHttp implements IExecutionEngine {
     switch (newState) {
       case ExecutionEngineState.ONLINE:
         this.logger.info("Execution client became online", {oldState, newState});
-        this.getClientVersion(getLodestarClientVersion(this.opts)).catch((e) => {
+        this.clientVersion = null;
+        this.getClientVersion().catch((e) => {
           this.logger.debug("Unable to get execution client version", {}, e);
           this.clientVersion = null;
         });

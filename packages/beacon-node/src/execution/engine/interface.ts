@@ -114,6 +114,9 @@ export interface IExecutionEngine {
 
   readonly clientVersion?: ClientVersion | null;
 
+  /** Return the cached execution client version, fetching it when it is not available. */
+  getClientVersion(): Promise<ClientVersion | null>;
+
   payloadIdCache: PayloadIdCache;
   /**
    * A state transition function which applies changes to the self.execution_state.

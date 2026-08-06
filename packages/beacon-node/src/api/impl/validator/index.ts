@@ -525,6 +525,7 @@ export function getValidatorApi(
     slot: Slot,
     randaoReveal: BLSSignature,
     graffiti?: string,
+    clientData?: Bytes32,
     // TODO deneb: skip randao verification
     _skipRandaoVerification?: boolean,
     builderBoostFactor?: bigint,
@@ -643,6 +644,7 @@ export function getValidatorApi(
           parentBlock,
           randaoReveal,
           graffiti: graffitiBytes,
+          clientData,
         })
         .then((commonBlockBody) => {
           deferredCommonBlockBody.resolve(commonBlockBody);
@@ -813,11 +815,20 @@ export function getValidatorApi(
   }
 
   return {
-    async produceBlockV3({slot, randaoReveal, graffiti, skipRandaoVerification, builderBoostFactor, ...opts}) {
+    async produceBlockV3({
+      slot,
+      randaoReveal,
+      graffiti,
+      clientData,
+      skipRandaoVerification,
+      builderBoostFactor,
+      ...opts
+    }) {
       const {data, ...meta} = await produceEngineOrBuilderBlock(
         slot,
         randaoReveal,
         graffiti,
+        clientData,
         skipRandaoVerification,
         builderBoostFactor,
         opts

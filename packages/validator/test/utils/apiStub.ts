@@ -5,13 +5,6 @@ type ApiClientStub = {[K in keyof Endpoints]: Mocked<ApiClientMethods<Endpoints[
   httpClient: Mocked<IHttpClient>;
 };
 
-const httpClientStub: IHttpClient = {
-  baseUrl: "",
-  request: vi.fn(),
-  urlsInits: [],
-  urlsScore: [],
-};
-
 export function getApiClientStub(): ApiClientStub {
   return {
     beacon: {
@@ -26,6 +19,7 @@ export function getApiClientStub(): ApiClientStub {
       submitPayloadAttestationMessages: vi.fn(),
     },
     node: {
+      getNodeVersionV2: vi.fn(),
       getSyncingStatus: vi.fn(),
     },
     validator: {
@@ -48,7 +42,12 @@ export function getApiClientStub(): ApiClientStub {
       publishAggregateAndProofsV2: vi.fn(),
       submitBeaconCommitteeSelections: vi.fn(),
     },
-    httpClient: httpClientStub,
+    httpClient: {
+      baseUrl: "",
+      request: vi.fn(),
+      urlsInits: [],
+      urlsScore: [],
+    },
   } as unknown as ApiClientStub;
 }
 

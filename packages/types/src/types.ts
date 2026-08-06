@@ -250,10 +250,10 @@ type TypesByFork = {
   [ForkName.fulu]: {
     BeaconBlockHeader: phase0.BeaconBlockHeader;
     SignedBeaconBlockHeader: phase0.SignedBeaconBlockHeader;
-    BeaconBlock: electra.BeaconBlock;
-    BeaconBlockBody: electra.BeaconBlockBody;
+    BeaconBlock: fulu.BeaconBlock;
+    BeaconBlockBody: fulu.BeaconBlockBody;
     BeaconState: fulu.BeaconState;
-    SignedBeaconBlock: electra.SignedBeaconBlock;
+    SignedBeaconBlock: fulu.SignedBeaconBlock;
     Metadata: fulu.Metadata;
     Status: fulu.Status;
     LightClientHeader: deneb.LightClientHeader;
@@ -262,9 +262,9 @@ type TypesByFork = {
     LightClientFinalityUpdate: electra.LightClientFinalityUpdate;
     LightClientOptimisticUpdate: electra.LightClientOptimisticUpdate;
     LightClientStore: electra.LightClientStore;
-    BlindedBeaconBlock: electra.BlindedBeaconBlock;
-    BlindedBeaconBlockBody: electra.BlindedBeaconBlockBody;
-    SignedBlindedBeaconBlock: electra.SignedBlindedBeaconBlock;
+    BlindedBeaconBlock: fulu.BlindedBeaconBlock;
+    BlindedBeaconBlockBody: fulu.BlindedBeaconBlockBody;
+    SignedBlindedBeaconBlock: fulu.SignedBlindedBeaconBlock;
     ExecutionPayload: deneb.ExecutionPayload;
     ExecutionPayloadHeader: deneb.ExecutionPayloadHeader;
     BuilderBid: electra.BuilderBid;

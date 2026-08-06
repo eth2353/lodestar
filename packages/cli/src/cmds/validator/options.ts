@@ -37,6 +37,7 @@ export type IValidatorCliArgs = AccountValidatorArgs &
     beaconNodes: string[];
     force?: boolean;
     graffiti?: string;
+    clientData?: string;
     afterBlockDelaySlotFraction?: number;
     scAfterBlockDelaySlotFraction?: number;
     suggestedFeeRecipient?: string;
@@ -212,6 +213,11 @@ export const validatorOptions: CliCommandOptions<IValidatorCliArgs> = {
 
   graffiti: {
     description: "Specify your custom graffiti to be included in blocks (plain UTF8 text, 32 characters max)",
+    type: "string",
+  },
+
+  clientData: {
+    description: "Custom EIP-8359 client_data value as a 32-byte hex string",
     type: "string",
   },
 
