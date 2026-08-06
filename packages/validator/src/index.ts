@@ -13,6 +13,13 @@ export {MAX_BUILDER_BOOST_FACTOR, SignerType, ValidatorStore, defaultOptions} fr
 export * from "./slashingProtection/index.js";
 // Types
 export type {ProcessShutdownCallback} from "./types.js";
+export {
+  ClientDataConsensusClient,
+  ClientDataExecutionClient,
+  ClientDataSetup,
+  DEFAULT_CLIENT_DATA,
+  encodeClientData,
+} from "./util/clientData.js";
 // Remote signer client
 export {
   SignableMessageType,

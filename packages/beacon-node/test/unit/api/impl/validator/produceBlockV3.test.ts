@@ -5,7 +5,7 @@ import {ProtoBlock} from "@lodestar/fork-choice";
 import {ForkName, SLOTS_PER_EPOCH, ZERO_HASH_HEX} from "@lodestar/params";
 import {BeaconStateView, G2_POINT_AT_INFINITY, computeTimeAtSlot} from "@lodestar/state-transition";
 import {ssz} from "@lodestar/types";
-import {toRootHex} from "@lodestar/utils";
+import {sleep, toRootHex} from "@lodestar/utils";
 import {getValidatorApi} from "../../../../../src/api/impl/validator/index.js";
 import {defaultApiOptions} from "../../../../../src/api/options.js";
 import {BeaconChain} from "../../../../../src/chain/chain.js";
@@ -225,6 +225,7 @@ describe("api/validator - produceBlockV3", () => {
     const parentBlockRoot = fullBlock.parentRoot;
     const parentBlock = generateProtoBlock({blockRoot: toRootHex(parentBlockRoot), slot: currentSlot - 1});
     const graffiti = "a".repeat(32);
+    const clientData = new Uint8Array(32).fill(0xab);
     const feeRecipient = "0xcccccccccccccccccccccccccccccccccccccccc";
 
     modules.chain.getProposerHead.mockReturnValue(parentBlock);
@@ -249,7 +250,15 @@ describe("api/validator - produceBlockV3", () => {
     });
 
     // check if expectedFeeRecipient is passed to produceBlock
-    await api.produceBlockV3({slot, randaoReveal, graffiti, feeRecipient});
+    await api.produceBlockV3({slot, randaoReveal, graffiti, clientData, feeRecipient});
+    await sleep(0);
+    expect(modules.chain.produceCommonBlockBody).toBeCalledWith({
+      randaoReveal,
+      graffiti: toGraffitiBytes(graffiti),
+      clientData,
+      slot,
+      parentBlock,
+    });
     expect(modules.chain.produceBlock).toBeCalledWith({
       randaoReveal,
       graffiti: toGraffitiBytes(graffiti),

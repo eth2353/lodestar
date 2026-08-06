@@ -8,6 +8,7 @@ const ZERO_HASH_HEX = "0x" + Buffer.from(ZERO_HASH).toString("hex");
 const randaoReveal = new Uint8Array(96).fill(1);
 const selectionProof = new Uint8Array(96).fill(1);
 const graffiti = "a".repeat(32);
+const clientData = new Uint8Array(32).fill(2);
 const feeRecipient = "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb";
 
 export const testData: GenericServerTestCases<Endpoints> = {
@@ -61,6 +62,7 @@ export const testData: GenericServerTestCases<Endpoints> = {
       slot: 32000,
       randaoReveal,
       graffiti,
+      clientData,
       skipRandaoVerification: true,
       builderBoostFactor: 0n,
       feeRecipient,

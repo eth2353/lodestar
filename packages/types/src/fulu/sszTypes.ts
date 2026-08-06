@@ -22,7 +22,7 @@ import {ssz as electraSsz} from "../electra/index.js";
 import {ssz as phase0Ssz} from "../phase0/index.js";
 import {ssz as primitiveSsz} from "../primitive/index.js";
 
-const {Root, ColumnIndex, RowIndex, Bytes32, Slot, UintNum64, ValidatorIndex} = primitiveSsz;
+const {Root, ColumnIndex, RowIndex, Bytes32, Slot, UintNum64, ValidatorIndex, BLSSignature} = primitiveSsz;
 
 export const KZGProof = denebSsz.KZGProof;
 export const Blob = denebSsz.Blob;
@@ -105,9 +105,54 @@ export const BeaconBlocksByHeadRequest = new ContainerType(
   {typeName: "BeaconBlocksByHeadRequest", jsonCase: "eth2"}
 );
 
-// Explicit aliases for a few common types
-export const BeaconBlock = electraSsz.BeaconBlock;
-export const SignedBeaconBlock = electraSsz.SignedBeaconBlock;
+// New in FULU:EIP8359
+export const BeaconBlockBody = new ContainerType(
+  {
+    ...electraSsz.BeaconBlockBody.fields,
+    clientData: Bytes32,
+  },
+  {typeName: "BeaconBlockBody", jsonCase: "eth2", cachePermanentRootStruct: true}
+);
+
+export const BeaconBlock = new ContainerType(
+  {
+    ...electraSsz.BeaconBlock.fields,
+    body: BeaconBlockBody,
+  },
+  {typeName: "BeaconBlock", jsonCase: "eth2", cachePermanentRootStruct: true}
+);
+
+export const SignedBeaconBlock = new ContainerType(
+  {
+    message: BeaconBlock,
+    signature: BLSSignature,
+  },
+  {typeName: "SignedBeaconBlock", jsonCase: "eth2"}
+);
+
+export const BlindedBeaconBlockBody = new ContainerType(
+  {
+    ...electraSsz.BlindedBeaconBlockBody.fields,
+    clientData: Bytes32,
+  },
+  {typeName: "BlindedBeaconBlockBody", jsonCase: "eth2", cachePermanentRootStruct: true}
+);
+
+export const BlindedBeaconBlock = new ContainerType(
+  {
+    ...electraSsz.BlindedBeaconBlock.fields,
+    body: BlindedBeaconBlockBody,
+  },
+  {typeName: "BlindedBeaconBlock", jsonCase: "eth2", cachePermanentRootStruct: true}
+);
+
+export const SignedBlindedBeaconBlock = new ContainerType(
+  {
+    message: BlindedBeaconBlock,
+    signature: BLSSignature,
+  },
+  {typeName: "SignedBlindedBeaconBlock", jsonCase: "eth2"}
+);
 
 // Containers
 export const BlobsBundle = new ContainerType(
@@ -137,7 +182,7 @@ export const BeaconState = new ContainerType(
 
 export const BlockContents = new ContainerType(
   {
-    block: electraSsz.BeaconBlock,
+    block: BeaconBlock,
     kzgProofs: KZGProofs,
     blobs: denebSsz.Blobs,
   },
@@ -146,7 +191,7 @@ export const BlockContents = new ContainerType(
 
 export const SignedBlockContents = new ContainerType(
   {
-    signedBlock: electraSsz.SignedBeaconBlock,
+    signedBlock: SignedBeaconBlock,
     kzgProofs: KZGProofs,
     blobs: denebSsz.Blobs,
   },

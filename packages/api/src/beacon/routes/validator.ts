@@ -17,6 +17,7 @@ import {
   BeaconBlock,
   BlindedBeaconBlock,
   BlockContents,
+  Bytes32,
   CommitteeIndex,
   Epoch,
   ProducedBlockSource,
@@ -400,6 +401,8 @@ export type Endpoints = {
       randaoReveal: BLSSignature;
       /** Arbitrary data validator wants to include in block */
       graffiti?: string;
+      /** Validator client and setup data */
+      clientData?: Bytes32;
       skipRandaoVerification?: boolean;
       builderBoostFactor?: UintBn64;
     } & ExtraProduceBlockOpts,
@@ -408,6 +411,7 @@ export type Endpoints = {
       query: {
         randao_reveal: string;
         graffiti?: string;
+        client_data?: string;
         skip_randao_verification?: string;
         fee_recipient?: string;
         builder_selection?: string;
@@ -784,6 +788,7 @@ export function getDefinitions(config: ChainForkConfig): RouteDefinitions<Endpoi
           slot,
           randaoReveal,
           graffiti,
+          clientData,
           skipRandaoVerification,
           feeRecipient,
           builderSelection,
@@ -795,6 +800,7 @@ export function getDefinitions(config: ChainForkConfig): RouteDefinitions<Endpoi
           query: {
             randao_reveal: toHex(randaoReveal),
             graffiti: toGraffitiHex(graffiti),
+            client_data: clientData === undefined ? undefined : toHex(clientData),
             skip_randao_verification: writeSkipRandaoVerification(skipRandaoVerification),
             fee_recipient: feeRecipient,
             builder_selection: builderSelection,
@@ -807,6 +813,7 @@ export function getDefinitions(config: ChainForkConfig): RouteDefinitions<Endpoi
           slot: params.slot,
           randaoReveal: fromHex(query.randao_reveal),
           graffiti: fromGraffitiHex(query.graffiti),
+          clientData: query.client_data === undefined ? undefined : ssz.Bytes32.fromJson(query.client_data),
           skipRandaoVerification: parseSkipRandaoVerification(query.skip_randao_verification),
           feeRecipient: query.fee_recipient,
           builderSelection: query.builder_selection as BuilderSelection,
@@ -819,6 +826,7 @@ export function getDefinitions(config: ChainForkConfig): RouteDefinitions<Endpoi
           query: {
             randao_reveal: Schema.StringRequired,
             graffiti: Schema.String,
+            client_data: Schema.String,
             skip_randao_verification: Schema.String,
             fee_recipient: Schema.String,
             builder_selection: Schema.String,

@@ -1,6 +1,6 @@
 import {ApiClient, routes} from "@lodestar/api";
 import {ChainForkConfig} from "@lodestar/config";
-import {BUILDER_INDEX_SELF_BUILD, ForkPostGloas, isForkPostGloas} from "@lodestar/params";
+import {BUILDER_INDEX_SELF_BUILD, ForkName, ForkPostGloas, isForkPostGloas} from "@lodestar/params";
 import {IClock} from "@lodestar/state-transition";
 import {
   BLSPubkey,
@@ -8,6 +8,7 @@ import {
   BeaconBlock,
   BlindedBeaconBlock,
   BlockContents,
+  Bytes32,
   ProducedBlockSource,
   SignedBlindedBeaconBlock,
   SignedBlockContents,
@@ -41,6 +42,7 @@ type BlockProposalOpts = {
   broadcastValidation: routes.beacon.BroadcastValidation;
   blindedLocal: boolean;
   payloadLocal: boolean;
+  getClientData: () => Bytes32;
 };
 /**
  * Service that sets up and handles validator block proposal duties.
@@ -386,6 +388,7 @@ export class BlockProposingService {
       strictFeeRecipientCheck,
       blindedLocal,
       builderBoostFactor,
+      ...(_config.getForkName(slot) === ForkName.fulu ? {clientData: this.opts.getClientData()} : {}),
     });
     const meta = res.meta();
 

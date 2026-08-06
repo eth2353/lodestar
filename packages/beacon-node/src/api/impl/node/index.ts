@@ -65,7 +65,14 @@ export function getNodeApi(
     },
 
     async getNodeVersionV2() {
-      const {clientVersion} = chain.executionEngine;
+      let {clientVersion} = chain.executionEngine;
+      if (clientVersion == null) {
+        try {
+          clientVersion = await chain.executionEngine.getClientVersion();
+        } catch {
+          // Execution client version information is optional on this endpoint.
+        }
+      }
 
       return {
         data: {

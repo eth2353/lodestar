@@ -5,6 +5,10 @@ export class ExecutionEngineDisabled implements IExecutionEngine {
 
   readonly payloadIdCache = new PayloadIdCache();
 
+  async getClientVersion(): Promise<null> {
+    return null;
+  }
+
   async notifyNewPayload(): Promise<never> {
     throw Error("Execution engine disabled");
   }

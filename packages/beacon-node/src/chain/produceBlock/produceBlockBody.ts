@@ -92,6 +92,7 @@ export enum BlockProductionStep {
 export type BlockAttributes = {
   randaoReveal: BLSSignature;
   graffiti: Bytes32;
+  clientData?: Bytes32;
   slot: Slot;
   parentBlock: ProtoBlock;
   feeRecipient?: string;
@@ -998,7 +999,7 @@ export async function produceCommonBlockBody<T extends BlockType>(
   this: BeaconChain,
   blockType: T,
   currentState: IBeaconStateView,
-  {randaoReveal, graffiti, slot, parentBlock}: BlockAttributes
+  {randaoReveal, graffiti, clientData, slot, parentBlock}: BlockAttributes
 ): Promise<CommonBlockBody> {
   const stepsMetrics =
     blockType === BlockType.Full
@@ -1045,6 +1046,10 @@ export async function produceCommonBlockBody<T extends BlockType>(
     deposits: [],
     voluntaryExits,
   };
+
+  if (fork === ForkName.fulu) {
+    (blockBody as fulu.BeaconBlockBody).clientData = clientData ?? new Uint8Array(32);
+  }
 
   if (ForkSeq[fork] >= ForkSeq.capella) {
     (blockBody as CommonBlockBody).blsToExecutionChanges = blsToExecutionChanges;

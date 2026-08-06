@@ -11,6 +11,7 @@ import {BlockProposingService} from "../../../src/services/block.js";
 import {BlockDutiesService} from "../../../src/services/blockDuties.js";
 import {ChainHeaderTracker} from "../../../src/services/chainHeaderTracker.js";
 import {ValidatorStore} from "../../../src/services/validatorStore.js";
+import {DEFAULT_CLIENT_DATA} from "../../../src/util/clientData.js";
 import {getApiClientStub, mockApiResponse} from "../../utils/apiStub.js";
 import {ClockMock} from "../../utils/clock.js";
 import {loggerVc} from "../../utils/logger.js";
@@ -48,6 +49,7 @@ describe("BlockDutiesService", () => {
   afterEach(() => controller.abort());
 
   it("Should produce, sign, and publish a block", async () => {
+    vi.spyOn(config, "getForkName").mockReturnValue(ForkName.fulu);
     // Reply with some duties
     const slot = 0; // genesisTime is right now, so test with slot = currentSlot
     api.validator.getProposerDuties.mockResolvedValue(
@@ -71,6 +73,7 @@ describe("BlockDutiesService", () => {
       broadcastValidation: routes.beacon.BroadcastValidation.consensus,
       blindedLocal: false,
       payloadLocal: false,
+      getClientData: () => DEFAULT_CLIENT_DATA,
     });
 
     const signedBlock = ssz.phase0.SignedBeaconBlock.defaultValue();
@@ -126,6 +129,7 @@ describe("BlockDutiesService", () => {
         strictFeeRecipientCheck: false,
         blindedLocal: false,
         builderBoostFactor: BigInt(100),
+        clientData: DEFAULT_CLIENT_DATA,
       },
     ]);
   });
@@ -154,6 +158,7 @@ describe("BlockDutiesService", () => {
       broadcastValidation: routes.beacon.BroadcastValidation.consensus,
       blindedLocal: true,
       payloadLocal: false,
+      getClientData: () => DEFAULT_CLIENT_DATA,
     });
 
     const signedBlock = ssz.bellatrix.SignedBlindedBeaconBlock.defaultValue();
