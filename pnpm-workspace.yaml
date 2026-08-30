@@ -43,4 +43,5 @@ overrides:
   sigstore: "4.0.0"
 
 patchedDependencies:
+  '@libp2p/tcp@11.0.13': patches/@libp2p__tcp@11.0.13.patch
   sigstore@4.0.0: patches/sigstore@4.0.0.patch
